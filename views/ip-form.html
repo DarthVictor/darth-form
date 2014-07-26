@@ -1,0 +1,14 @@
+<div>
+  <div style="border: 1px solid black;" id="mainform"></div>
+  <h4>Cекция: {{current.field}}</h4>
+  <ul  style="list-style-type: none;">
+    <li>
+      Секция: 
+      <input type="text" delayed-change="editor.updateSectionCoodinates()" ng-model="formDefinition.sectionList[current.section].sectionName" class="span12"/>
+    </li>
+    <li>
+      Порядок отображения: <input type="text" delayed-change="editor.updateSectionCoodinates()" ng-model="current.sectionOrder" class="span4"/>
+    </li>
+  </ul>
+  
+</div>
