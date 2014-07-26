@@ -23,13 +23,16 @@ app.controller('TestController', function($scope) {
 app.directive('ipForm', function(){
   return {
     restrict: 'E',
+    replace: true,
     scope:{
       form: '='
     },
-    template: '<div style="border: 1px solid black;" id="mainform"></div>',
+    templateUrl: 'views/ip-form.html',
     link: function(scope, iElement, iAttrs) {
+        
         scope.rebuild = function(definition){
-          var rootNode = iElement[0].childNodes[0];
+          var rootNode = iElement[0].firstChild.nextSibling;
+          console.log(iElement[0], iElement[0].firstChild.nextSibling);
           while (rootNode.firstChild) {
               rootNode.removeChild(rootNode.firstChild);
           }
@@ -118,7 +121,7 @@ function getSectionBody(sectionDefinition){
                 
                 var control_group = document.createElement('div');   
                 control_group.className = 'control-group';             
-                col_div.appendChild(control_group);
+                fieldset.appendChild(control_group);
                 
                 var label = document.createElement('label');
                 control_group.appendChild(label);
@@ -181,7 +184,7 @@ function getOneSectionFormMatrix(fieldsObject, CssFrameworkProperties) {
           newRow[j].span_offset = CssFrameworkProperties.columnWidthClass
               + ((newRow[j].order.col2 - newRow[j].order.col1 + 1) * CssFrameworkProperties.minColumnsInField);						
           if (newRow[j].order.col1 - previousCol > 1) {
-            newRow[j].span_offset += CssFrameworkProperties.columnOffsetClass
+            newRow[j].span_offset += ' ' + CssFrameworkProperties.columnOffsetClass
                 + ((newRow[j].order.col1 - previousCol - 1) * CssFrameworkProperties.minColumnsInField);
           }
           previousCol = newRow[j].order.col2;
