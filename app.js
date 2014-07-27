@@ -3,10 +3,10 @@
 var formDefinition = JSON.parse(formResponse.definition.form)
 var rootElement = document.getElementById('mainform')
 addForm(rootElement, formDefinition)
-addEmptySectionToForm(rootElement, 'Новая секция')
-moveSectionTo(rootElement, 1, 5)
-moveSectionTo(rootElement, 1, 5)
-removeSection(rootElement, 15)
+// addEmptySectionToForm(rootElement, 'Новая секция')
+// moveSectionTo(rootElement, 1, 5)
+// moveSectionTo(rootElement, 1, 5)
+// removeSection(rootElement, 15)
 
 
 function transliterate(word) {
@@ -31,7 +31,6 @@ function hashCode(str){
     return hash;
 }
 
-
 function addForm(rootElem, formDefinition) {
 	function getFormHeaders(rootElem, formDefinition) {
 		var title = document.createElement('h2');
@@ -42,12 +41,13 @@ function addForm(rootElem, formDefinition) {
 	function getFormSections(rootElem, formDefinition) {
 		var panel_group = document.createElement('div');
 		panel_group.className = 'panel-group';
+		panel_group.id = '' + rootElem.id + 'panel_group';
 		rootElem.appendChild(panel_group);
 		var sections = _.map(_.sortBy(formDefinition.sectionList, function (section) {
 					return section.sectionOrder
 				}),
 				function (orderedSection) {
-				return getSectionFromDefinition(orderedSection, rootElem.id)
+				return getSectionFromDefinition(orderedSection, panel_group.id)
 			});
 		_.each(sections, function (section) {
 			panel_group.appendChild(section);
@@ -59,6 +59,9 @@ function addForm(rootElem, formDefinition) {
 }
 
 function getSectionFromDefinition(sectionDefinition, formId, alwaysClosed) {
+	function getSectionCollapseId(formId, sectionName){
+		return '' + formId + '_collapse_' + hashCode(sectionName);
+	}
 	var section = document.createElement('div');
 	section.className = "panel panel-default";
 
@@ -73,13 +76,13 @@ function getSectionFromDefinition(sectionDefinition, formId, alwaysClosed) {
 	var link_header = document.createElement('a');
 	panel_title.appendChild(link_header);
 	link_header.dataset.toggle = 'collapse';
-	link_header.dataset.parent = formId;
-	link_header.href = '#' + formId + '_collapse_' + hashCode(sectionDefinition.sectionName);
+	link_header.dataset.parent = '#' + formId;
+	link_header.href = '#' + getSectionCollapseId(formId, sectionDefinition.sectionName);
 	link_header.textContent = sectionDefinition.sectionName;
 
 	var panel_collapse = document.createElement('div');
 	panel_collapse.className = 'panel-collapse collapse' + (sectionDefinition.sectionOrder == 1 && !alwaysClosed ? ' in' : '');
-	panel_collapse.id = formId + '_collapse_' + hashCode(sectionDefinition.sectionName);
+	panel_collapse.id = getSectionCollapseId(formId, sectionDefinition.sectionName);
 	section.appendChild(panel_collapse);
 
 	panel_collapse.appendChild(getSectionBody(sectionDefinition));
@@ -222,4 +225,22 @@ function removeSection(rootElem, order){
 		throw new Error('Недопустимый индекс для поля "order" = ' + order);
 	}
 	panelElem.removeChild(panelElem.childNodes[order - 1])
+}
+
+function moveElementTo(rootElem, from /** section, row, col1, col2*/, to /** section, row, col1, col2*/){
+	var panelElem = rootElem.querySelector('.panel-group');
+	if (!to || to > panelElem.childNodes.length || to <= 0) {
+		sectionOrder = panelElem.childNodes.length + 1
+	}
+	if(from < 1 || from > panelElem.childNodes.length){
+		throw new Error('Недопустимый индекс для поля "from" = ' + from);
+	}
+	if (from != to){
+		if (to > from){ // Если мы передвигаем элемент с первого места на третье, 
+			to += 1;	// то его нужно вставлять перед четвертым элементом,
+						// поскольку перед вставкой элемент удаляется с предыдущего места 
+						// и старый четвертый становится третьим.
+		}
+		panelElem.insertBefore(panelElem.childNodes[from - 1], panelElem.childNodes[to - 1])
+	}
 }
