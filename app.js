@@ -1,5 +1,12 @@
 ﻿'use strict';
-
+var Bootstrap3CssFrameworkProperties = { //Bootstrap3 by default
+	columnWidthClass : 'col-sm-',
+	columnOffsetClass : 'col-sm-offset-',
+	minColumnsInField : 3,
+	maxColumnsInField : 12,
+	maxFieldsInRow: 4
+}
+var CssFrameworkProperties = Bootstrap3CssFrameworkProperties; //Bootstrap3 by default
 var formDefinition = JSON.parse(formResponse.definition.form)
 var rootElement = document.getElementById('mainform')
 addForm(rootElement, formDefinition)
@@ -41,7 +48,7 @@ function addForm(rootElem, formDefinition) {
 	function getFormSections(rootElem, formDefinition) {
 		var panel_group = document.createElement('div');
 		panel_group.className = 'panel-group';
-		panel_group.id = '' + rootElem.id + 'panel_group';
+		panel_group.id = '' + rootElem.id + '_panelgroup';
 		rootElem.appendChild(panel_group);
 		var sections = _.map(_.sortBy(formDefinition.sectionList, function (section) {
 					return section.sectionOrder
@@ -57,14 +64,19 @@ function addForm(rootElem, formDefinition) {
 	getFormHeaders(rootElem, formDefinition)
 	getFormSections(rootElem, formDefinition)
 }
-
+function getSectionCollapseId(formId, sectionName){
+	return '' + formId + '_collapse_' + hashCode(sectionName);
+}
+function getSectionId (formId, sectionName){
+	return '' + formId + '_' + hashCode(sectionName);
+}
 function getSectionFromDefinition(sectionDefinition, formId, alwaysClosed) {
-	function getSectionCollapseId(formId, sectionName){
-		return '' + formId + '_collapse_' + hashCode(sectionName);
-	}
+
 	var section = document.createElement('div');
 	section.className = "panel panel-default";
-
+	var sectionId = getSectionId(formId, sectionDefinition.sectionName);
+	var sectionCollapseId = getSectionCollapseId(formId, sectionDefinition.sectionName)
+	section.id = sectionId;
 	var panel_heading = document.createElement('div');
 	section.appendChild(panel_heading);
 	panel_heading.className = "panel-heading";
@@ -77,17 +89,42 @@ function getSectionFromDefinition(sectionDefinition, formId, alwaysClosed) {
 	panel_title.appendChild(link_header);
 	link_header.dataset.toggle = 'collapse';
 	link_header.dataset.parent = '#' + formId;
-	link_header.href = '#' + getSectionCollapseId(formId, sectionDefinition.sectionName);
+	link_header.dataset.section = '#' + sectionId;
+	link_header.href = '#' + sectionCollapseId;
 	link_header.textContent = sectionDefinition.sectionName;
+	link_header.onclick = onSectionClick;
 
 	var panel_collapse = document.createElement('div');
 	panel_collapse.className = 'panel-collapse collapse' + (sectionDefinition.sectionOrder == 1 && !alwaysClosed ? ' in' : '');
-	panel_collapse.id = getSectionCollapseId(formId, sectionDefinition.sectionName);
+	panel_collapse.id = sectionCollapseId;
 	section.appendChild(panel_collapse);
 
-	panel_collapse.appendChild(getSectionBody(sectionDefinition));
-
+	var sectionBody = getSectionBody(sectionDefinition, sectionId);
+	sectionBody.dataset.section = '#' + sectionId;
+	panel_collapse.appendChild(sectionBody);
+	
 	return section;
+}
+
+function getOrderFromQuerySelector(dataset){
+	var section = document.querySelector(dataset);
+	var sectionOrder = 0;
+	_.each(section.parentNode.childNodes, function(child, index){
+		if (section.id == child.id){
+			sectionOrder = index + 1;
+		}
+	});
+	if (sectionOrder > 0){
+		return sectionOrder;
+	}
+	else{
+		throw new Error('Неизвестный селектор: ' + dataset);
+	}
+}
+
+function onSectionClick(){
+	var sectionOrder = getOrderFromQuerySelector(this.dataset.section);
+	console.log('Выбрана секция ' + sectionOrder);
 }
 
 function getSectionBody(sectionDefinition) {
@@ -127,7 +164,7 @@ function getSectionBody(sectionDefinition) {
 	return panel_body;
 }
 
-function getOneSectionFormMatrix(fieldsObject, CssFrameworkProperties) {
+function getOneSectionFormMatrix(fieldsObject) {
 
 	/*
 	Получение матрицы элементов, в который каждый из элементов будет расположен
@@ -135,11 +172,7 @@ function getOneSectionFormMatrix(fieldsObject, CssFrameworkProperties) {
 	Использует заполняет только непостредственно форматирование формы, Виджеты и
 	данные проставляются в fillFormMatrix
 	 */
-	CssFrameworkProperties = CssFrameworkProperties || { //Bootstrap3 by default
-		columnWidthClass : 'col-sm-',
-		columnOffsetClass : 'col-sm-offset-',
-		minColumnsInField : 3
-	}
+	
 	var matrix = [];
 	if (fieldsObject) { // заполняем матрицу из заголовка
 		_.each(fieldsObject, function (value, key, list) {
