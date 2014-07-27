@@ -106,27 +106,6 @@ function getSectionFromDefinition(sectionDefinition, formId, alwaysClosed) {
 	return section;
 }
 
-function getOrderFromQuerySelector(dataset){
-	var section = document.querySelector(dataset);
-	var sectionOrder = 0;
-	_.each(section.parentNode.childNodes, function(child, index){
-		if (section.id == child.id){
-			sectionOrder = index + 1;
-		}
-	});
-	if (sectionOrder > 0){
-		return sectionOrder;
-	}
-	else{
-		throw new Error('Неизвестный селектор: ' + dataset);
-	}
-}
-
-function onSectionClick(){
-	var sectionOrder = getOrderFromQuerySelector(this.dataset.section);
-	console.log('Выбрана секция ' + sectionOrder);
-}
-
 function getSectionBody(sectionDefinition) {
 	var panel_body = document.createElement('div');
 	panel_body.className = 'panel-body';
@@ -135,18 +114,17 @@ function getSectionBody(sectionDefinition) {
 		if (row.length > 0) {
 			var row_div = document.createElement('div');
 			row_div.className = 'row';
+			row_div.dataset.scheme = JSON.stringify(row);
 			panel_body.appendChild(row_div);
 			_.each(row, function (cell) {
-				var col_div = document.createElement('div');
-				row_div.appendChild(col_div);
-				col_div.className = cell.span_offset;
-
 				var fieldset = document.createElement('fieldset');
-				col_div.appendChild(fieldset);
+				row_div.appendChild(fieldset);
+				fieldset.className = cell.span_offset;
+				fieldset.onclick = onFieldClick;
 
 				var control_group = document.createElement('div');
 				control_group.className = 'control-group';
-				col_div.appendChild(control_group);
+				fieldset.appendChild(control_group);
 
 				var label = document.createElement('label');
 				control_group.appendChild(label);
@@ -162,6 +140,32 @@ function getSectionBody(sectionDefinition) {
 		}
 	});
 	return panel_body;
+}
+
+function getSectionOrderFromQuerySelector(querySelector){
+	var section = document.querySelector(querySelector);
+	var sectionOrder = 0;
+	_.each(section.parentNode.childNodes, function(child, index){
+		if (section.id == child.id){
+			sectionOrder = index + 1;
+		}
+	});
+	if (sectionOrder > 0){
+		return sectionOrder;
+	}
+	else{
+		throw new Error('Неизвестный селектор: ' + querySelector);
+	}
+}
+
+function onSectionClick(){
+	var sectionOrder = getSectionOrderFromQuerySelector(this.dataset.section);
+	console.log('Выбрана секция ' + sectionOrder);
+}
+
+function onFieldClick(){
+	var rowScheme = JSON.parse(this.parentNode.dataset.scheme);
+	console.log(rowScheme)
 }
 
 function getOneSectionFormMatrix(fieldsObject) {
