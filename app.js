@@ -3,7 +3,9 @@
 var formDefinition = JSON.parse(formResponse.definition.form)
 var rootElement = document.getElementById('mainform')
 addForm(rootElement, formDefinition)
-addEmptySectionToForm(rootElement, 'Новая секция',1)
+addEmptySectionToForm(rootElement, 'Новая секция')
+moveSectionTo(rootElement, 1, 5)
+moveSectionTo(rootElement, 6, 1)
 
 
 function transliterate(word) {
@@ -177,19 +179,39 @@ function getOneSectionFormMatrix(fieldsObject, CssFrameworkProperties) {
 	return matrix;
 }; //getOneSectionFormMatrix
 
-
 function addEmptySectionToForm(rootElem, sectionName, sectionOrder) {
 	console.log(rootElem.querySelector('.panel-group'));
 	var panelElem = rootElem.querySelector('.panel-group');
+	if (!sectionOrder || sectionOrder > panelElem.childNodes.length || sectionOrder <= 0) {
+		sectionOrder = panelElem.childNodes.length + 1
+	}
 	var sectionDefinition = {
 		sectionName : sectionName,
 		sectionOrder : sectionOrder,
 		fieldList : null
 	};
 	var section = getSectionFromDefinition(sectionDefinition, rootElem.id, true);
-	if (!sectionOrder || sectionOrder > panelElem.childNodes.length || sectionOrder <= 0) {
+	if (sectionOrder > panelElem.childNodes.length) {
 		panelElem.appendChild(section);
 	} else {
 		panelElem.insertBefore(section, panelElem.childNodes[sectionOrder - 1])
+	}
+}
+
+function moveSectionTo(rootElem, from, to){
+	var panelElem = rootElem.querySelector('.panel-group');
+	if (!to || to > panelElem.childNodes.length || to <= 0) {
+		sectionOrder = panelElem.childNodes.length + 1
+	}
+	if(from < 1 || from > panelElem.childNodes.length || from <= 0){
+		throw new Error('Недопустимый индекс для поля "from" = ' + from);
+	}
+	if (from != to){
+		if (to > from){ // Если мы передвигаем элемент с первого места на третье, 
+			to += 1;	// то его нужно вставлять перед четвертым элементом,
+						// поскольку перед вставкой элемент удаляется с предыдущего места 
+						// и старый четвертый становится третьим.
+		}
+		panelElem.insertBefore(panelElem.childNodes[from - 1], panelElem.childNodes[to - 1])
 	}
 }
