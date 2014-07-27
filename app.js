@@ -5,7 +5,8 @@ var rootElement = document.getElementById('mainform')
 addForm(rootElement, formDefinition)
 addEmptySectionToForm(rootElement, 'Новая секция')
 moveSectionTo(rootElement, 1, 5)
-moveSectionTo(rootElement, 6, 1)
+moveSectionTo(rootElement, 1, 5)
+removeSection(rootElement, 15)
 
 
 function transliterate(word) {
@@ -180,7 +181,6 @@ function getOneSectionFormMatrix(fieldsObject, CssFrameworkProperties) {
 }; //getOneSectionFormMatrix
 
 function addEmptySectionToForm(rootElem, sectionName, sectionOrder) {
-	console.log(rootElem.querySelector('.panel-group'));
 	var panelElem = rootElem.querySelector('.panel-group');
 	if (!sectionOrder || sectionOrder > panelElem.childNodes.length || sectionOrder <= 0) {
 		sectionOrder = panelElem.childNodes.length + 1
@@ -203,7 +203,7 @@ function moveSectionTo(rootElem, from, to){
 	if (!to || to > panelElem.childNodes.length || to <= 0) {
 		sectionOrder = panelElem.childNodes.length + 1
 	}
-	if(from < 1 || from > panelElem.childNodes.length || from <= 0){
+	if(from < 1 || from > panelElem.childNodes.length){
 		throw new Error('Недопустимый индекс для поля "from" = ' + from);
 	}
 	if (from != to){
@@ -214,4 +214,12 @@ function moveSectionTo(rootElem, from, to){
 		}
 		panelElem.insertBefore(panelElem.childNodes[from - 1], panelElem.childNodes[to - 1])
 	}
+}
+
+function removeSection(rootElem, order){
+	var panelElem = rootElem.querySelector('.panel-group');
+	if(order < 1 || order > panelElem.childNodes.length){
+		throw new Error('Недопустимый индекс для поля "order" = ' + order);
+	}
+	panelElem.removeChild(panelElem.childNodes[order - 1])
 }
