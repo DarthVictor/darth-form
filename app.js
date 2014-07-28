@@ -120,6 +120,7 @@ function getSectionBody(sectionDefinition) {
 				var fieldset = document.createElement('fieldset');
 				row_div.appendChild(fieldset);
 				fieldset.className = cell.span_offset;
+				fieldset.id = cell.id;
 				fieldset.onclick = onFieldClick;
 
 				var control_group = document.createElement('div');
@@ -156,7 +157,7 @@ function getSectionOrderFromQuerySelector(querySelector){
 	else{
 		throw new Error('Неизвестный селектор: ' + querySelector);
 	}
-}
+}	
 
 function onSectionClick(){
 	var sectionOrder = getSectionOrderFromQuerySelector(this.dataset.section);
@@ -165,9 +166,20 @@ function onSectionClick(){
 
 function onFieldClick(){
 	var rowScheme = JSON.parse(this.parentNode.dataset.scheme);
-	console.log(rowScheme)
+  var self = this;
+  var fieldScheme = _.find(rowScheme, function(field){
+    return field.id === self.id;
+  });
+  var fieldOrder = {};
+  fieldOrder.section = getSectionOrderFromQuerySelector(this.parentNode.parentNode.dataset.section);
+  if(!!fieldScheme){
+    _.extend(fieldOrder, fieldScheme.order);
+  }
+  else{
+    throw new Error('Неправильно определено поле: ' + this.id);
+  }
+	console.log('Выбрано поле ' + this.id + ' c координатами ' + JSON.stringify(fieldOrder)  );
 }
-
 function getOneSectionFormMatrix(fieldsObject) {
 
 	/*
@@ -196,12 +208,12 @@ function getOneSectionFormMatrix(fieldsObject) {
 
 		matrix = _.map(_.compact(matrix), function (row, row_index) { //удаляем пустые строки
 				var newRowUnordered = _.map(row, function (cell, cell_index) {
-						cell.order.row = row_index; //обновляем индекс
+						cell.order.row = row_index + 1; //обновляем индекс
 						return cell;
 					});
 				var newRow = _.sortBy(newRowUnordered, // сортировка элементов строки
 						function (cell) { // по первой занимаемой элементом колонке
-						cell.order.col1
+              return cell.order.col1;
 					});
 				var previousCol = 0;
 				for (var j = 0; j < newRow.length; j++) {
@@ -264,20 +276,45 @@ function removeSection(rootElem, order){
 	panelElem.removeChild(panelElem.childNodes[order - 1])
 }
 
-function moveElementTo(rootElem, from /** section, row, col1, col2*/, to /** section, row, col1, col2*/){
+function moveElementTo(rootElem, from /** section & row & col */, to /** section | row | col*/){
 	var panelElem = rootElem.querySelector('.panel-group');
-	if (!to || to > panelElem.childNodes.length || to <= 0) {
-		sectionOrder = panelElem.childNodes.length + 1
+	
+  //Находим элемент DOM
+	if(from.section < 1 || from.section > panelElem.childNodes.length){
+		throw new Error('Недопустимый индекс для поля "from.section" = ' + from.section);
 	}
-	if(from < 1 || from > panelElem.childNodes.length){
-		throw new Error('Недопустимый индекс для поля "from" = ' + from);
+  var rowsNodes = panelElem.childNodes[from.section - 1].querySelector('.panel-body').childNodes;
+	if(from.row < 1 || from.row > rowsNodes.length){
+		throw new Error('Недопустимый индекс для поля "from.row" = ' + from.row);
 	}
-	if (from != to){
-		if (to > from){ // Если мы передвигаем элемент с первого места на третье, 
-			to += 1;	// то его нужно вставлять перед четвертым элементом,
-						// поскольку перед вставкой элемент удаляется с предыдущего места 
-						// и старый четвертый становится третьим.
-		}
-		panelElem.insertBefore(panelElem.childNodes[from - 1], panelElem.childNodes[to - 1])
-	}
+  var rowScheme = JSON.parse(rowsNodes[from.row - 1].dataset.scheme);
+  var fieldScheme = _.find(rowScheme, function(field){
+    return field.order.col1 === from.col;
+  });
+  console.log(fieldScheme);
+  if(!!to.section){
+    // Смена секции
+    if(to.section < 1 || to > panelElem.childNodes.length){
+      throw new Error('Недопустимый индекс для поля "to.section" = ' + to.section);
+    }
+    // добавление строки к секции
+    
+    // перенос из старой строки в новую
+    
+    // создание схемы новой строки
+    
+    // обновление схемы старой строки
+    
+  }
+	// if (!_.isEqual(from, to){
+		// if (to > from){ /* Если мы передвигаем элемент с первого места на третье, 
+                    // то его нужно вставлять перед четвертым элементом,
+                    // поскольку перед вставкой элемент удаляется с предыдущего места 
+                    // и старый четвертый становится третьим. */
+      // to += 1;	
+    // }
+    // /
+		// panelElem.insertBefore(panelElem.childNodes[from - 1], panelElem.childNodes[to - 1])
+	// }
 }
+moveElementTo(rootElement, {"section":1,"row":2,"col":1},  {"section":2})
