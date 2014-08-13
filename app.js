@@ -15,7 +15,8 @@ addForm(rootElement, formDefinition)
 // moveSectionTo(rootElement, 1, 5)
 // removeSection(rootElement, 15)
 //moveElementTo(rootElement, {'section':0,'row':2,'col':0},  {'section':7})
-//moveElementTo(rootElement, {'section':0,'row':0,'col':2},  {'row':6})
+//moveElementTo(rootElement,  {'section':0,'row':1,'col':0} ,  {'row':2})
+moveElementTo(rootElement, {'section':0,'row':1,'col':2},  {'row':6})
 
 function transliterate(word) {
     var a = {'Ё':'YO','Й':'I','Ц':'TS','У':'U','К':'K','Е':'E','Н':'N','Г':'G','Ш':'SH','Щ':'SCH','З':'Z','Х':'H','Ъ':'\'','ё':'yo','й':'i','ц':'ts','у':'u','к':'k','е':'e','н':'n','г':'g','ш':'sh','щ':'sch','з':'z','х':'h','ъ':'\'','Ф':'F','Ы':'I','В':'V','А':'a','П':'P','Р':'R','О':'O','Л':'L','Д':'D','Ж':'ZH','Э':'E','ф':'f','ы':'i','в':'v','а':'a','п':'p','р':'r','о':'o','л':'l','д':'d','ж':'zh','э':'e','Я':'Ya','Ч':'CH','С':'S','М':'M','И':'I','Т':'T','Ь':'\'','Б':'B','Ю':'YU','я':'ya','ч':'ch','с':'s','м':'m','и':'i','т':'t','ь':'\'','б':'b','ю':'yu'};
@@ -190,8 +191,18 @@ function onFieldClick(){
     console.log('Выбрано поле ' + this.id + ' c координатами ' + JSON.stringify(fieldOrder)  );
 }
 
-function setSpanOffset(newRow){
-    for (var j = 0, previousCol = 0; j < newRow.length; j++) {
+function updateSpanOffsetClassesInChildren(row){
+    _.each(JSON.parse(row.dataset.scheme), function(cellScheme, index){
+        row.childNodes[index].className = cellScheme.span_offset;
+    })
+}
+
+function setSpanOffsetInScheme(newRowUnordered){
+    var newRow = _.sortBy(newRowUnordered, // сортировка элементов строки
+                function (cell) { // по первой занимаемой элементом колонке
+                    return cell.order.col1;
+    });
+    for (var j = 0, previousCol = -1; j < newRow.length; j++) {
         newRow[j].span_offset = CssFrameworkProperties.columnWidthClass
              + ((newRow[j].order.col2 - newRow[j].order.col1 + 1) * CssFrameworkProperties.minColumnsInField);
         if (newRow[j].order.col1 - previousCol > 0) {
@@ -209,7 +220,7 @@ function getOneSectionFromMatrix(fieldsObject) {
     Получение матрицы элементов, в который каждый из элементов будет расположен
     на сетке N*4. Элементы представляют что-то вида {id: 'name', span_offset:'col-sm-3 col-sm-offset-6', 'order' : {'row':0, 'col1':0, 'col2':2}}
     Использует заполняет только непостредственно форматирование формы, Виджеты и
-    данные проставляются в fillFormMatrix
+    данные проставляются в fillFormMatrix	
      */
     
     var matrix = [];
@@ -234,11 +245,7 @@ function getOneSectionFromMatrix(fieldsObject) {
                         cell.order.row = row_index; //обновляем индекс
                         return cell;
                     });
-                var newRow = _.sortBy(newRowUnordered, // сортировка элементов строки
-                            function (cell) { // по первой занимаемой элементом колонке
-                                return cell.order.col1;
-                });
-                return setSpanOffset(newRow);
+                return setSpanOffsetInScheme(newRowUnordered);
             });
 
     }
@@ -247,8 +254,10 @@ function getOneSectionFromMatrix(fieldsObject) {
 
 function addEmptySectionToForm(rootElem, sectionName, sectionOrder) {
     var panelElem = rootElem.querySelector('.panel-group');
-    if (!sectionOrder || sectionOrder > panelElem.childNodes.length || sectionOrder <= 0) {
-        sectionOrder = panelElem.childNodes.length
+    if (sectionOrder == null || 
+        sectionOrder > panelElem.childNodes.length - 1 ||
+        sectionOrder < 0) {
+            sectionOrder = panelElem.childNodes.length
     }
     var sectionDefinition = {
         sectionName : sectionName,
@@ -300,14 +309,14 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
     if(from.section < 0 || from.section >= panelElem.childNodes.length){
         throw new Error('Недопустимый индекс для поля \'from.section\' = ' + from.section);
     }
-    var fromRowsNodes = panelElem.childNodes[from.section].querySelector('.panel-body').childNodes;
+    var fromSection = panelElem.childNodes[from.section].querySelector('.panel-body');
+    var fromRowsNodes = fromSection.childNodes;
     if(from.row < 0 || from.row >= fromRowsNodes.length){
         console.log(fromRowsNodes.length)
         throw new Error('Недопустимый индекс для поля \'from.row\' = ' + from.row);
     }        
     var fromRow = fromRowsNodes[from.row];
     var oldRowScheme = JSON.parse(fromRow.dataset.scheme);
-    console.log(oldRowScheme);
     var fieldScheme = _.find(oldRowScheme, function(field){
         return field.order.col1 === from.col;
     });
@@ -328,7 +337,7 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
     }
 
     function updateOldRow(){
-        var oldRowSchemeUpdated = setSpanOffset(_.filter(oldRowScheme, function(field){
+        var oldRowSchemeUpdated = setSpanOffsetInScheme(_.filter(oldRowScheme, function(field){
             return field.order.col1 != from.col;
         }));
         // в старой строке остались ячейки        
@@ -341,21 +350,22 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
             });
         }
         else{ // в старой строке не осталось ячеек
-            fromRowsNodes.removeChild(from.row); 
+            fromSection.removeChild(fromRowsNodes[from.row]); 
             renumerateRows();
         }
     }
     
+    var toSection, toRow;
     // Смена секции
     if(!!to.section && to.section != from.section){
         if(to.section < 0 || to.section >= panelElem.childNodes.length){
             throw new Error('Недопустимый индекс для поля \'to.section\' = ' + to.section);
         }
-        var toSection = panelElem.childNodes[to.section].querySelector('.panel-body')
+        toSection = panelElem.childNodes[to.section].querySelector('.panel-body')
         var toRowsNodes = toSection.childNodes;
         
         // перенос из старой строки в новую
-        var toRow = getRowBody([]);
+        toRow = getRowBody([]);
         toRow.appendChild(cellElement);
         // создание схемы новой строки
         toRow.dataset.scheme = JSON.stringify([{
@@ -387,27 +397,27 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
         if (to.row > from.row && lastElementInRow){
             to.row += 1;
         }
-        var toRow = fromRowsNodes[to.row]
+        toRow = fromRowsNodes[to.row]
         
         // Есть ли в новой строке место для передвигаемой ячейки?
+        var insertIntoNewRow = false;
 		if(to.row < fromRowsNodes.length) {
 			var toRow = fromRowsNodes[to.row];
-			var insertIntoNewRow = false;
 			_.each(JSON.parse(toRow.dataset.scheme), function(cellScheme){
-                    if (cellScheme.order.col2 > fieldScheme.order.col1 && cellScheme.order.col1 < fieldScheme.order.col1
-                    || cellScheme.order.col1 < fieldScheme.order.col2 && cellScheme.order.col1 > fieldScheme.order.col1){
-						var insertIntoNewRow = true;
+                    if (cellScheme.order.col2 >= fieldScheme.order.col1 && cellScheme.order.col1 <= fieldScheme.order.col1
+                    || cellScheme.order.col1 <= fieldScheme.order.col2 && cellScheme.order.col1 >= fieldScheme.order.col1){
+                        insertIntoNewRow = true;
 						to.row = to.row + (to.row > from.row ? 1 : 0)
 					}
 			});
         }else{
 			// перенос из старой строки в новую
-			var insertIntoNewRow = true;
+			insertIntoNewRow = true;
 			to.row = to.row + (lastElementInRow ? 1 : 0)
 		}
-        console.log(insertIntoNewRow)
+        var toRow;
 		if(insertIntoNewRow){
-			var toRow = getRowBody([]);
+			toRow = getRowBody([]);
 			toRow.appendChild(cellElement);
 			// создание схемы новой строки
 			toRow.dataset.scheme = JSON.stringify([{
@@ -424,13 +434,33 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
 							: '')
 			}]);
 			// добавление строки к секции
-			if(to.row > fromRowsNodes.length)
-				toSection.appendChild(toRow);
+            console.log(fromSection, to.row)
+			if(to.row >= fromRowsNodes.length)
+				fromSection.appendChild(toRow);
 			else
-				toSection.insertBefore(toRow, romRowsNodes.childNodes[to.row])
+				fromSection.insertBefore(toRow, fromRowsNodes[to.row])
 			updateOldRow();
 		}
-		//else
+		else{
+            toRow = fromRowsNodes[to.row]
+            var insertBefore = null; // ищем ячейку перед которой вставить данные
+            _.each(JSON.parse(toRow.dataset.scheme), function(cellScheme, index){
+                    if (cellScheme.order.col1 > fieldScheme.order.col2){
+                        insertBefore = index;
+					}
+			});
+            var fieldSchemeNew = fieldScheme;
+            fieldSchemeNew.order.row = to.row;
+			if(insertBefore != null)
+				toRow.appendChild(cellElement);
+			else
+				toRow.insertBefore(cellElement, toRow.childNodes[insertBefore])
+            var oldRowScheme = JSON.parse(toRow.dataset.scheme);
+            oldRowScheme.push(fieldSchemeNew);
+            toRow.dataset.scheme = JSON.stringify(setSpanOffsetInScheme(oldRowScheme));
+            updateSpanOffsetClassesInChildren(toRow);
+			updateOldRow();
+        }
     }
     
     
