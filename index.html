@@ -7,29 +7,18 @@
     <link href="css/bootstrap-theme.css" rel="stylesheet">
   </head>
  
-  <body ng-app="app">
+  <body>
     <div class="container" ng-controller="TestController">
-      <h3 style="font-style:italic;">Тестирование формы</h3>
-      
-      <textarea class="col-sm-12" rows="15" ng-model="formPlainData"></textarea>
-      <ip-form form="formDefinition"></ip-form>
-      
-     <!--  <div style="border: 1px solid black;" id="mainform"></div>
-       -->
-      
-
-      
+        <h3 style="font-style:italic;">Тестирование формы</h3>
+        <div style="border: 1px solid black;" id="mainform"></div>      
       
     </div>
     
-    <script src="js/jquery-1.11.1.js"></script>
-    <script src="js/bootstrap.js"></script>    
-    <script src="js/underscore-min.js"></script>
-    <script src="js/angular.min.js"></script>
+    <script src="vendor/jquery-2.1.1.js"></script>
+    <script src="vendor/bootstrap.js"></script>    
+    <script src="vendor/underscore-min.js"></script>
     
-    <script src="data.js"></script>
-    <script src="app.js"></script>
-   
-
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
   </body>
 </html>
