@@ -104,16 +104,32 @@ describe('Checking test framework', function() {
         compareDomAndForm('mainform', formDef)
     });	
 	
-    // it('should implement moveSectionTo operations', function() {
-        // moveSectionTo(rootElement, 1, 5)
-        // var formDef = formPassportOfTheRailwaySectionSettlement;
-        // formDef.sectionList.push({
-                // "sectionName" : "Новая секция",
-                // "sectionOrder" : 100,
-                // "fieldList" : {}
-        // });
-        // compareDomAndForm('mainform', formDef)
-    // });		
+    it('should implement moveSectionTo operations', function() {
+        moveSectionTo(rootElement, 1, 5)
+        var formDef = formPassportOfTheRailwaySectionSettlement;
+        formDef.sectionList = _.map(formDef.sectionList, function(section){
+            if (section.sectionOrder == 1) section.sectionOrder = 6;
+            if (section.sectionOrder >= 6) section.sectionOrder += 1;
+            return section;
+        });
+        compareDomAndForm('mainform', formDef)
+    });		
+    
+    it('should implement removeSection operations', function() {
+        removeSection(rootElement, 10)
+        var formDef = formPassportOfTheRailwaySectionSettlement;
+        formDef.sectionList = _.chain(formDef.sectionList)
+                                .sortBy(function(section){ return section.sectionOrder; })
+                                .map(function(section, index){
+                                    section.sectionOrder = index;
+                                    return section;
+                                })
+                                .filter(function(section){
+                                    return section.sectionOrder != 10;
+                                })
+                            .value();
+        compareDomAndForm('mainform', formDef)
+    });		
     
 	
     

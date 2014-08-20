@@ -17,7 +17,7 @@ if (!rootElement){
     addForm(rootElement, formPassportOfTheRailwaySectionSettlement)
 // addEmptySectionToForm(rootElement, 'Новая секция')
 // moveSectionTo(rootElement, 1, 5)
-// removeSection(rootElement, 15)
+// removeSection(rootElement, 10)
 //moveElementTo(rootElement, {'section':0,'row':2,'col':0},  {'section':7})
 //moveElementTo(rootElement,  {'section':0,'row':1,'col':0} ,  {'row':2})
 //moveElementTo(rootElement, {'section':0,'row':1,'col':2},  {'row':6})
@@ -108,6 +108,7 @@ function getSectionFromDefinition(sectionDefinition, formId, alwaysClosed) {
     panel_collapse.id = sectionCollapseId;
     section.appendChild(panel_collapse);
 
+    //TODO: реализация ленивой загрузки
     var sectionBody = getSectionBody(sectionDefinition, sectionId);
     sectionBody.dataset.section = '#' + sectionId;
     panel_collapse.appendChild(sectionBody);
