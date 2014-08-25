@@ -32,6 +32,7 @@ module.exports = function(config) {
       'vendor/moment.min.js',
       'vendor/underscore-min.js',
       'vendor/*.js',
+      'css/*.css',
       //'index.html',
       'js/data.js',
       'js/*.js',

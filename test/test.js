@@ -34,14 +34,14 @@ describe('Checking test framework', function() {
         );
    
         _.each(formDef.sectionList, function(sectionDef){
-            //var sectionDef = formPassportOfTheRailwaySectionSettlement.sectionList[2];
+            //var sectionDef = formPassportOfTheRailwaySectionSettlement.sectionList[0]; var formId = 'mainform';
             var fieldMatrixSchemeDef = _.chain(sectionDef.fieldList)
                                     .map(function(value, key){
                                         return _.extend({id: key}, value);})
                                     .groupBy(function(field){
                                         return field.order.row;})
                                     .values()
-                                    .map(function(row){
+                                    .map(function(row, rowNum){
                                         return _.sortBy(row, function(cell){
                                             return cell.order.col1;
                                         });
@@ -58,10 +58,8 @@ describe('Checking test framework', function() {
                 });
             });
             
-            var fieldMatrixDom = _.map($('#' + formId + '_panelgroup_' + hashCode(sectionDef.sectionName) + ' .row'), function(row, rowNum){
-                return {
-                    scheme: row.dataset.scheme,
-                    widthOffset: _.map($(row).children(), function(cell, cellNum){
+            var fieldMatrixWidthOffsetDom = _.map($('#' + formId + '_' + hashCode(sectionDef.sectionName) + ' .row'), function(row, rowNum){
+                return _.map($(row).children(), function(cell, cellNum){
                         var reWidth  = new RegExp(CssFrameworkProperties.columnWidthClass + '(\\d*)')
                         var reOffset = new RegExp(CssFrameworkProperties.columnOffsetClass + '(\\d*)')
                         return {
@@ -69,22 +67,29 @@ describe('Checking test framework', function() {
                             width: (parseInt(reWidth.exec(cell.className)[1])|| 0)/CssFrameworkProperties.minColumnsInField,
                             offset: (parseInt(reOffset.exec(cell.className)[1])|| 0)/CssFrameworkProperties.minColumnsInField
                         };
-                    })
-                };
+                    }) ;
             });
-                         
-            expect(// Data in row data-scheme field is true
-                _.map(fieldMatrixDom, function(row){
-                    return _.map(JSON.parse(row.scheme), function(cell){
-                        return {id:cell.id, order:cell.order};
-                    });
-                })                
-            ).toEqualData(fieldMatrixSchemeDef)
+            
+            // console.log('fieldMatrixSchemeDef', _.map(fieldMatrixDom, function(row){
+                    // return _.map(JSON.parse(row.scheme), function(cell){
+                        // return {id:cell.id, order:cell.order};
+                    // });
+                // })     
+            // )
+            // console.log('fieldMatrixSchemeDef', fieldMatrixSchemeDef)
+            
+            expect(// Data in data-scheme field is true
+                JSON.parse(document.getElementById( formId + '_' + hashCode(sectionDef.sectionName)).dataset.scheme)
+            ).toEqualData(sectionDef.fieldList)
+            
+            // console.log('fieldMatrixWidthOffsetDef', _.map(fieldMatrixDom, function(row){
+                    // return  row.widthOffset;;
+                // })       
+            // )
+            // console.log('fieldMatrixWidthOffsetDef', fieldMatrixWidthOffsetDef)
             
             expect(// Cells in DOM has right width/offset
-                _.map(fieldMatrixDom, function(row){
-                    return  row.widthOffset;;
-                })                
+                fieldMatrixWidthOffsetDom           
             ).toEqualData(fieldMatrixWidthOffsetDef)
         });
     }
@@ -129,7 +134,73 @@ describe('Checking test framework', function() {
                                 })
                             .value();
         compareDomAndForm('mainform', formDef)
+    });	
+    
+    it('should implement insertRow operations', function() {
+        insertRowWithScheme(rootElement, 0, 3, {TEST: {
+					"order" : {
+						"row" : 1,
+						"col1" : 0,
+						"col2" : 1
+					}
+				}})
+        var formDef = formPassportOfTheRailwaySectionSettlement;
+        formDef.sectionList = _.map(formDef.sectionList, function(section){
+            if (section.sectionOrder == 0) {
+                _.each(section.fieldList, function(field){
+                    if (field.order.row >= 3) field.order.row++;
+                })
+                section.fieldList['TEST'] = {
+					"order" : {
+						"row" : 3,
+						"col1" : 0,
+						"col2" : 1
+					}
+				}
+            }
+            return section;
+        });
+        compareDomAndForm('mainform', formDef)
     });		
+    
+    // it('should implement moveElementTo section operations', function() {
+        // moveElementTo(rootElement, {'section':0,'row':2,'col':0},  {'section':7})
+        // var formDef = formPassportOfTheRailwaySectionSettlement;
+        // formDef.sectionList = _.each(formDef.sectionList, function(section){
+            // if (section.sectionOrder == 0){
+                // delete section.fieldList['ISACTIVE']
+            // }
+            
+            // if (section.sectionOrder == 7){
+
+                // section.fieldList['ISACTIVE'] = {
+					// "order" : {
+						// "row" : 4,
+						// "col1" : 0,
+						// "col2" : 1
+					// }
+				// };
+            // }
+            
+        // })
+        // compareDomAndForm('mainform', formDef)
+    // });		
+    
+    // it('should implement moveElementTo row operations', function() {
+        // moveElementTo(rootElement,  {'section':0,'row':1,'col':0}, {'row':2})
+        // var formDef = formPassportOfTheRailwaySectionSettlement;
+        // formDef.sectionList = _.each(formDef.sectionList, function(section){
+            
+            // if (section.sectionOrder == 0){
+                // _.each(section.fieldList,function(value, field){
+                    // if(value.order.row >=2) value.order.row++;
+                // });
+                // section.fieldList['CODE'].order.row = 2;
+            // }
+            
+        // })
+        // compareDomAndForm('mainform', formDef)
+    // });		
     
 	
     

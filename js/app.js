@@ -14,14 +14,28 @@ if (!rootElement){
     rootElement.id = 'mainform';
     document.body.appendChild(rootElement)
 }else{
+    // var t = new Date(); 
+    // for (var i = 0; i < 1000; i++){
+        // addForm(rootElement, formPassportOfTheRailwaySectionSettlement)    
+        // removeForm(rootElement)
+    // }
+    // var t1 = new Date();
+    // console.log((t1.getSeconds() - t.getSeconds())*1000 + t1.getMilliseconds() - t.getMilliseconds());
+
     addForm(rootElement, formPassportOfTheRailwaySectionSettlement)
-// addEmptySectionToForm(rootElement, 'Новая секция')
-// moveSectionTo(rootElement, 1, 5)
-// removeSection(rootElement, 10)
-//moveElementTo(rootElement, {'section':0,'row':2,'col':0},  {'section':7})
-//moveElementTo(rootElement,  {'section':0,'row':1,'col':0} ,  {'row':2})
-//moveElementTo(rootElement, {'section':0,'row':1,'col':2},  {'row':6})
+    // addEmptySectionToForm(rootElement, 'Новая секция')
+    // moveSectionTo(rootElement, 1, 5)
+    // removeSection(rootElement, 10)
+    // insertRowWithScheme(rootElement, 0, 3, {TEST: {
+					// "order" : {
+						// "row" : 1,
+						// "col1" : 0,
+						// "col2" : 1
+					// }
+				// }})
+
 }
+
 function transliterate(word) {
     var a = {'Ё':'YO','Й':'I','Ц':'TS','У':'U','К':'K','Е':'E','Н':'N','Г':'G','Ш':'SH','Щ':'SCH','З':'Z','Х':'H','Ъ':'\'','ё':'yo','й':'i','ц':'ts','у':'u','к':'k','е':'e','н':'n','г':'g','ш':'sh','щ':'sch','з':'z','х':'h','ъ':'\'','Ф':'F','Ы':'I','В':'V','А':'a','П':'P','Р':'R','О':'O','Л':'L','Д':'D','Ж':'ZH','Э':'E','ф':'f','ы':'i','в':'v','а':'a','п':'p','р':'r','о':'o','л':'l','д':'d','ж':'zh','э':'e','Я':'Ya','Ч':'CH','С':'S','М':'M','И':'I','Т':'T','Ь':'\'','Б':'B','Ю':'YU','я':'ya','ч':'ch','с':'s','м':'m','и':'i','т':'t','ь':'\'','б':'b','ю':'yu'};
     return (''+word).split('').map(function (char) {
@@ -60,7 +74,7 @@ function addForm(rootElem, formDefinition) {
                     return section.sectionOrder
                 }),
                 function (orderedSection) {
-                return getSectionFromDefinition(orderedSection, panel_group.id)
+                return getSectionFromDefinition(orderedSection, rootElem.id)
             });
         _.each(sections, function (section) {
             panel_group.appendChild(section);
@@ -113,26 +127,66 @@ function getSectionFromDefinition(sectionDefinition, formId, alwaysClosed) {
     sectionBody.dataset.section = '#' + sectionId;
     panel_collapse.appendChild(sectionBody);
     
+    updateSectionScheme(section);
+    // console.log(JSON.parse(section.dataset.scheme), sectionDefinition.fieldList, 
+        // _.isEqual(JSON.parse(section.dataset.scheme), sectionDefinition.fieldList));
     return section;
 }
 
-function getSectionBody(sectionDefinition) {
+function updateSectionScheme(section){
+    var sectionBody = section.childNodes[1].childNodes[0];
+    section.dataset.scheme = JSON.stringify(getSchemeFromSectionElements(sectionBody));
+}
+
+function getSchemeFromSectionElements(sectionBody){       
+    var sectionScheme = {};
+    _.each(sectionBody.childNodes, function(row, rowNum){
+        var rowScheme = _.map(row.childNodes, function(cell, cellNum){
+            var reWidth  = new RegExp(CssFrameworkProperties.columnWidthClass + '(\\d*)')
+            var reOffset = new RegExp(CssFrameworkProperties.columnOffsetClass + '(\\d*)')
+            return {
+                name: cell.id,
+                width: (parseInt(reWidth.exec(cell.className)[1])|| 0)/CssFrameworkProperties.minColumnsInField,
+                offset: (parseInt(reOffset.exec(cell.className)[1])|| 0)/CssFrameworkProperties.minColumnsInField
+            };
+        })
+        var col1 = -1;
+        _.each(rowScheme, function(cellScheme){
+            col1 = col1 + cellScheme.offset + 1
+            sectionScheme[cellScheme.name] = {
+                order: {
+                    row: rowNum,
+                    col1: col1,
+                    col2: col1 + cellScheme.width - 1
+                }
+            };
+            col1 = sectionScheme[cellScheme.name].order.col2;
+        });
+    })
+    return sectionScheme    
+}
+
+function getSectionBody(sectionDefinition, sectionId) {
     var panel_body = document.createElement('div');
     panel_body.className = 'panel-body';
-    var matrix = getOneSectionFromMatrix(sectionDefinition.fieldList);
-    _.each(matrix, function (row) {
+    var matrix = getOneSectionMatrix(sectionDefinition.fieldList);
+    _.each(matrix, function (row, rowNum) {
         if (row.length > 0){
-            panel_body.appendChild(getRowBody(row));
+            panel_body.appendChild(getRowBody(row, sectionId));
         }
     });
     return panel_body;
 }
 
-function getRowBody(row) {
+
+function getRowBody(row, sectionId) {
     var row_div = document.createElement('div');
     row_div.className = 'row';
-    row_div.dataset.scheme = JSON.stringify(row);
-    _.each(row, function (cell) {
+    row_div.dataset.sectionId = sectionId
+    row_div.getScheme = function (){
+        return JSON.parse(document.getElementById(this.dataset.sectionId).dataset.scheme);
+    }
+    _.each(row , function (cell) {
         row_div.appendChild(getCellBody(cell));               
     });        
     return row_div;
@@ -183,10 +237,12 @@ function onSectionClick(){
 }
 
 function onFieldClick(){
-    var rowScheme = JSON.parse(this.parentNode.dataset.scheme);
+    //console.log(this.parentNode.getScheme)
+    var sectionScheme = this.parentNode.getScheme();
     var self = this;
-    var fieldScheme = _.find(rowScheme, function(field){
-        return field.id === self.id;
+    //console.log(sectionScheme, self.id)
+    var fieldScheme = _.find(sectionScheme, function(field, fieldName){
+        return fieldName === self.id;
     });
     var fieldOrder = {};
     fieldOrder.section = getSectionOrderFromQuerySelector(this.parentNode.parentNode.dataset.section);
@@ -199,11 +255,11 @@ function onFieldClick(){
     console.log('Выбрано поле ' + this.id + ' c координатами ' + JSON.stringify(fieldOrder)  );
 }
 
-function updateSpanOffsetClassesInChildren(row){
-    _.each(JSON.parse(row.dataset.scheme), function(cellScheme, index){
-        row.childNodes[index].className = cellScheme.span_offset;
-    })
-}
+// function updateSpanOffsetClassesInChildren(row){
+    // _.each(JSON.parse(row.dataset.scheme), function(cellScheme, index){
+        // row.childNodes[index].className = cellScheme.span_offset;
+    // })
+// }
 
 function setSpanOffsetInScheme(newRowUnordered){
     var newRow = _.sortBy(newRowUnordered, // сортировка элементов строки
@@ -222,8 +278,7 @@ function setSpanOffsetInScheme(newRowUnordered){
     return newRow;
 }
 
-function getOneSectionFromMatrix(fieldsObject) {
-
+function getOneSectionMatrix(fieldsObject) {
     /*
     Получение матрицы элементов, в который каждый из элементов будет расположен
     на сетке N*4. Элементы представляют что-то вида {id: 'name', span_offset:'col-sm-3 col-sm-offset-6', 'order' : {'row':0, 'col1':0, 'col2':2}}
@@ -231,34 +286,49 @@ function getOneSectionFromMatrix(fieldsObject) {
     данные проставляются в fillFormMatrix	
      */
     
-    var matrix = [];
-    if (fieldsObject) { // заполняем матрицу из заголовка
-        _.each(fieldsObject, function (value, key, list) {
-            if (!!value.order) {
-                var rowNum = value.order.row;
-                var el = {
-                    id : key,
-                    order : value.order
-                };
-                if (matrix[rowNum]) {
-                    matrix[rowNum].push(el);
-                } else {
-                    matrix[rowNum] = [el];
-                }
-            }
-        });
-
-        matrix = _.map(_.compact(matrix), function (row, row_index) { //удаляем пустые строки
-                var newRowUnordered = _.map(row, function (cell, cell_index) {
-                        cell.order.row = row_index; //обновляем индекс
+    return _.chain(fieldsObject)
+        .map(function(value, key){
+            return _.extend({id: key}, value);})
+        .groupBy(function(field){
+            return field.order.row;}) // grouping by row numbers
+        .values()
+        .map(function(row, rowNum){
+            return setSpanOffsetInScheme(
+                    _.chain(row)
+                    .sortBy(function(cell){
+                        return cell.order.col1; // sorting by first column
+                    })
+                    .map(function (cell){
+                        cell.order.row = rowNum; // removing empty rows
                         return cell;
-                    });
-                return setSpanOffsetInScheme(newRowUnordered);
-            });
+                    })
+                    .value()
+                );
+        })
+    .value();
+}; //getOneSectionMatrix
+          
+function getOneRowMatrix(fieldsObject, rowNum) {
+    return setSpanOffsetInScheme(
+        _.chain(fieldsObject)
+            .map(function(value, key){
+                value.order.row = rowNum;
+                return _.extend({id: key}, value);})
+            .values()
+            .sortBy(function(cell){
+                return cell.order.col1; // sorting by first column
+            })
+            .map(function (cell){
+                cell.order.row = rowNum; // removing empty rows
+                return cell;
+            })
+            .value()
+    );
+}
 
-    }
-    return matrix;
-}; //getOneSectionFromMatrix
+function getRowFieldsObject(fieldsObject, row) {throw new Error('not implemented')}
+
+
 
 function addEmptySectionToForm(rootElem, sectionName, sectionOrder) {
     var panelElem = rootElem.querySelector('.panel-group');
@@ -306,34 +376,63 @@ function removeSection(rootElem, order){
     panelElem.removeChild(panelElem.childNodes[order])
 }
 
-function cleanRowIfEmpty(row){
-    console.log('Not implemented');
+function insertRowWithScheme(rootElem, sectionNum, rowNum, rowFields){
+    //checking indexes
+    var panelElem = rootElem.querySelector('.panel-group');
+    if (sectionNum < 0 || sectionNum > panelElem.childNodes.length-1) {
+        throw new Error('Недопустимый индекс для секции = ' + sectionNum);
+    }
+    var section = panelElem.childNodes[sectionNum];
+    var panel_body = section.querySelector('.panel-body');
+    var sectionScheme = JSON.parse(section.dataset.scheme);
+    if (rowNum < 0 || rowNum > panel_body.childNodes.length) {
+        throw new Error('Недопустимый индекс для строки = ' + rowNum);
+    }
+    
+    //checking scheme for new row
+    _.each(rowFields, function(fieldValue, fieldName){
+        fieldValue.order.row = rowNum;
+        if(sectionScheme[fieldName] !== undefined) {
+            throw new Error('Недопустимое имя поля = ' + fieldName);
+        }
+    });
+    var row = getRowBody(getOneRowMatrix(rowFields, rowNum), section.id);
+
+    if (rowNum === panel_body.childNodes.length)
+        panel_body.appendChild(row);
+    else{
+        panel_body.insertBefore(row, panel_body.childNodes[rowNum]);
+    }
+    updateSectionScheme(section);
 }
 
-function moveElementTo(rootElem, from /** section & row & col */, to /** section | row | col | colWidth*/){
+function canInsertCellBefore(rootElem, beforeCellName, insertableCellScheme){
     var panelElem = rootElem.querySelector('.panel-group');
+    var cellElement = document.getElementById(beforeCellName);
+    if(!cellElement) throw new Error('Can\'t find cell element');
+    var sectionScheme = getSchemeForFieldName(beforeCellName);
+    var cellScheme = sectionScheme[beforeCellName];
+    console.assert(!!cellScheme, 'Can\'t find scheme for cell with name' + beforeCellName);       
+    var to = cellScheme.order;
+};
 
-    //Находим элемент DOM
-    if(from.section < 0 || from.section >= panelElem.childNodes.length){
-        throw new Error('Недопустимый индекс для поля \'from.section\' = ' + from.section);
-    }
-    var fromSection = panelElem.childNodes[from.section].querySelector('.panel-body');
-    var fromRowsNodes = fromSection.childNodes;
-    if(from.row < 0 || from.row >= fromRowsNodes.length){
-        console.log(fromRowsNodes.length)
-        throw new Error('Недопустимый индекс для поля \'from.row\' = ' + from.row);
-    }        
-    var fromRow = fromRowsNodes[from.row];
-    var oldRowScheme = JSON.parse(fromRow.dataset.scheme);
-    var fieldScheme = _.find(oldRowScheme, function(field){
-        return field.order.col1 === from.col;
-    });
-    var cellWidth = fieldScheme.order.col2 - fieldScheme.order.col1;
-    var cellElement = _.find(fromRow.childNodes, function(cell){
-        return cell.id === fieldScheme.id;
-    });
 
-    function renumerateRows(){
+function getSchemeForFieldName(fieldName){
+    return  JSON.parse(document.getElementById(
+                document.getElementById(fieldName).parentNode.dataset.sectionId
+            ).dataset.scheme);
+}
+
+function moveElementTo(rootElem, fieldName, to /** section | row | col | colWidth*/){
+    var panelElem = rootElem.querySelector('.panel-group');
+    var cellElement = document.getElementById(fieldName);
+    if(!cellElement) throw new Error('Can\'t find cell element');
+    var sectionScheme = getSchemeForFieldName(fieldName);
+    var cellScheme = sectionScheme[fieldName];
+    console.assert(!!cellScheme, 'Can\'t find scheme for cell with name' + fieldName);       
+    var from = cellScheme.order;
+   
+/*     function renumerateRows(){
         _.each(fromRowsNodes, function(row, index){
             row.dataset.scheme = JSON.stringify(
                 _.map(JSON.parse(row.dataset.scheme), function(cellScheme){
@@ -361,7 +460,7 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
             fromSection.removeChild(fromRowsNodes[from.row]); 
             renumerateRows();
         }
-    }
+    } 
     
     var toSection, toRow;
     // Смена секции
@@ -374,6 +473,7 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
         
         // перенос из старой строки в новую
         toRow = getRowBody([]);
+        console.log(toRow, cellElement)
         toRow.appendChild(cellElement);
         // создание схемы новой строки
         toRow.dataset.scheme = JSON.stringify([{
@@ -388,7 +488,7 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
         }]);
         // добавление строки к секции
         toSection.appendChild(toRow);
-        updateOldRow();
+        updateSectionScheme();
     }
     // Смена строки
     else if(!!to.row && to.row != from.row){
@@ -397,11 +497,10 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
         }
         // Остануться ли в нашей строке еще ячейки?
         var lastElementInRow = (fromRow.childNodes.length == 0);
-        
-        /* Если мы передвигаем элемент с первого места на третье, 
-        то его нужно вставлять перед четвертым элементом,
-        поскольку перед вставкой элемент удаляется с предыдущего места 
-        и старый четвертый становится третьим. */
+        // Если мы передвигаем элемент с первого места на третье, 
+        // то его нужно вставлять перед четвертым элементом,
+        // поскольку перед вставкой элемент удаляется с предыдущего места 
+        // и старый четвертый становится третьим. 
         if (to.row > from.row && lastElementInRow){
             to.row += 1;
         }
@@ -415,13 +514,11 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
                     if (cellScheme.order.col2 >= fieldScheme.order.col1 && cellScheme.order.col1 <= fieldScheme.order.col1
                     || cellScheme.order.col1 <= fieldScheme.order.col2 && cellScheme.order.col1 >= fieldScheme.order.col1){
                         insertIntoNewRow = true;
-						to.row = to.row + (to.row > from.row ? 1 : 0)
 					}
 			});
         }else{
 			// перенос из старой строки в новую
 			insertIntoNewRow = true;
-			to.row = to.row + (lastElementInRow ? 1 : 0)
 		}
         var toRow;
 		if(insertIntoNewRow){
@@ -433,7 +530,7 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
 				order:{
 					col1: fieldScheme.order.col1,
 					col2: fieldScheme.order.col2,
-					row: to.row + (to.row > from.row ? 1 : 0)
+					row: to.row
 				},
 				span_offset:  CssFrameworkProperties.columnWidthClass
 					 + ((fieldScheme.order.col2 - fieldScheme.order.col1) * CssFrameworkProperties.minColumnsInField)
@@ -442,11 +539,12 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
 							: '')
 			}]);
 			// добавление строки к секции
-            console.log(fromSection, to.row)
-			if(to.row >= fromRowsNodes.length)
+			if(to.row >= fromRowsNodes.length){
 				fromSection.appendChild(toRow);
-			else
+			}
+            else{
 				fromSection.insertBefore(toRow, fromRowsNodes[to.row])
+            }
 			updateOldRow();
 		}
 		else{
@@ -470,4 +568,6 @@ function moveElementTo(rootElem, from /** section & row & col */, to /** section
 			updateOldRow();
         }
     }
+    
+    */
 }
